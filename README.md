@@ -17,32 +17,24 @@ This paper presents a channel-wise progressive coding system for lossless compre
 
 ### <u>Overall framework of proposed method</u>
 
-<p align="center"><img src="figure/Overall.png" width="700"></p>
+<p align="center"><img src="figure/method.png" width="700"></p>
 
-During meta-transfer learning, the external dataset is used, where internal learning is done during meta-test time.
-From random initial \theta_0, large-scale dataset DIV2K with “bicubic” degradation is exploited to obtain \theta_T.
-Then, meta-transfer learning learns a good representation \theta_M for super-resolution tasks with diverse blur kernel scenarios.
-In the meta-test phase, self-supervision within a test image is exploited to train the model with corresponding blur kernel.
-
-### <u> Algorithms </u>
-
-<p align="center"><img src="figure/meta-training.png" width="400">&nbsp;&nbsp;<img src="figure/meta-test.png" width="400"></p> 
-
-Left: The algorithm of Meta-Transfer Learning & Right: The algorithm of Meta-Test.
+We first apply a reversible color transform proposed in to the input RGB images to decorrelate the color components. Then, for each encoding pixel, prediction for the pixel value and coding context are simultaneously generated in the raster scan order. Afterward,
+to utilize the AAC as our entropy coder, we quantize the obtained real-valued coding contexts into N steps, where the level of the quantized coding context is proportional to the magnitude of the local activity. In AAC, individual entropy coder is employed for each quantized coding context, because the statistics of prediction error differs depending on the local activity. Finally, the prediction error is compressed into a bitstream based on the corresponding quantized coding context through the AAC.
 
 ## Experimental Results
 
-**Results on various kernel environments (X2)**
+**Results on compression performance**
 
-<p align="center"><img src="figure/result.png" width="900"></p>
+<p align="center"><img src="figure/result_bpp.png" width="900"></p>
 
-The results are evaluated with the average PSNR (dB) and SSIM on Y channel of YCbCr colorspace.
-<font color="red">Red </font> color denotes the best results and <font color ="blue"> blue </font> denotes the second best.
-The number between parantheses of our methods (MZSR) denote the number of gradient updates.
+Comparison of our method with other engineered and learning based codecs. We measure the performances in bits per pixel (bpp). The difference in percentage to our method is highlighted in green if our method outperforms and in red otherwise.
 
-**Results on scaling factor (X4)**
+**Results on CPU time**
 
-<p align="center"><img src="figure/resultx4.png" width="900"></p>
+<p align="center"><img src="figure/result_time.png" width="900"></p>
+
+Comparision of computation time (CPU time in seconds). We compared times for 512 x 512 image.
 
 **Test Input Data**
 
