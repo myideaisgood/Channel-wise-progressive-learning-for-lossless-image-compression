@@ -32,7 +32,7 @@ Comparison of our method with other engineered and learning based codecs. We mea
 
 **Results on CPU time**
 
-<p align="center"><img src="figure/result_time.png" width="900"></p>
+<p align="center"><img src="figure/result_time.png" width="450"></p>
 
 Comparision of computation time (CPU time in seconds). We compared times for 512 x 512 image.
 
