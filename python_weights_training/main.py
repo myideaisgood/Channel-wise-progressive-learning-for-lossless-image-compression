@@ -4,5 +4,7 @@ from network import Network
 args = parse_args()
 my_net = Network(args)
 my_net.build()
-my_net.train()
+
+if args.do_train :
+    my_net.train()
 my_net.print_all_weights()

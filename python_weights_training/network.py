@@ -303,6 +303,32 @@ class Network(object):
 
         f.close()
 
+        filename = os.path.abspath("../") + "/c_compression/x64/Release/" + channel + '_weights.txt'
+
+        f = open(filename, 'w')
+
+        f.write(str(n_in) + '\n')
+        f.write(str(n_hidden) + '\n')
+        f.write(str(n_out) + '\n')
+        f.write(str(n_layer) + '\n')
+        f.write(str(CTX_UP) + '\n')
+        f.write(str(CTX_LEFT) + '\n')
+
+        for k in range(n_layer):
+            for i in range(W_[k].shape[0]):
+                for j in range(W_[k].shape[1]):
+                    f.write(str(W_[k][i,j]) + '\t')
+                f.write('\n')
+
+        for k in range(n_layer):
+            for j in range(b_[k].shape[0]):
+                f.write(str(b_[k][j]) + '\t')
+            f.write('\n')
+
+
+        f.close()
+
+
     def print_all_weights(self):
 
         GPU_NUM = self.args.gpu_num
@@ -330,5 +356,5 @@ if __name__ == "__main__":
     args = parse_args()
     my_net = Network(args)
     my_net.build()
-    #my_net.train()
+    my_net.train()
     my_net.print_all_weights()
