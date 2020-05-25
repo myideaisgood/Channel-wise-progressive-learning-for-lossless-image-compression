@@ -29,7 +29,7 @@ void read_directory(const std::string& name, stringvec& v)
 
 void printUsage(char *s) {
 	printf("Usage: %s e [source file (ppm)] [compressed file (bin)]\n", s);
-	printf("Usage: %s d [compressed file (bin)] [decoded file (bmp)]\n", s);
+	printf("Usage: %s d [compressed file (bin)] [decoded file (ppm)]\n", s);
 }
 
 int main(int argc, char *argv[]) {
