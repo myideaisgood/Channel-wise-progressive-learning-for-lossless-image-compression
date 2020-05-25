@@ -36,47 +36,50 @@ Comparison of our method with other engineered and learning based codecs. We mea
 
 Comparision of computation time (CPU time in seconds). We compared times for 512 x 512 image.
 
-**Test Input Data**
+**Test Data**
 
-Degraded Images of Set5, B100, Urban100 on various kernel environments.
+[MCM]   (https://www4.comp.polyu.edu.hk/~cslzhang/CDM_Dataset.htm)
 
-[Download](https://drive.google.com/open?id=16L961dGynkraoawKE2XyiCh4pdRS-e4Y)
+[DIV2K] (https://data.vision.ee.ethz.ch/cvl/DIV2K/)
 
-## Visualized Results
-
-<p align="center"><img src="figure/001.png" width="900"></p>
-<br><br>
-<p align="center"><img src="figure/002.png" width="900"></p>
+[Open Images] (https://storage.googleapis.com/openimages/web/index.html)
 
 ## Brief explanation of contents
 
 ```
-├── GT: Ground-truth images
-├── Input: Input LR images
-├── Model: Pre-trained models are included (Model Zoo)
-    ├──> Directx2: Model for direct subsampling (x2)
-    ├──> Multi-scale: Multi-scale model
-    ├──> Bicubicx2: Model for bicubic subsampling (x2)
-    └──> Directx4: Model for direct subsampling (x4)
-├── Pretrained: Pre-trained model (bicubic) for transfer learning.
-└── results: Output results are going to be saved here.
+├── python_weights_training : python code for training MLP weights
+    ├──> ckpt : trained models will be saved here
+    └──> data : train/valid/test data should be saved here
+└── c_compression : c++ code for compressing images with MLP weights obtained from python code
 
-Rest codes are for the training and test of MZSR.
 ```
 
 ## Guidelines for Codes
 
-**Requisites should be installed beforehand.**
-
-Clone this repo.
-```
-git clone http://github.com/JWSoh/MZSR.git
-cd MZSR/
-```
-
 ### Training
 
-Download training dataset [DIV2K](https://data.vision.ee.ethz.ch/cvl/DIV2K/).
+Configuration should be done in **config.py**.
+
+[Options]
+```
+python main.py --gpu=[GPU_number] --epoch=[Epochs to train]
+```
+
+MLP weights of channel Y,U,V will be saved in **weights_y.txt**, **weights_u.txt**, **weights_v.txt**.
+
+### Test (Compression)
+
+Make sure MLP weights.txt and input images are saved at c_compression/x64/Release.
+
+**Encoding**
+```
+ICIP_Compression.exe e [source file (ppm)] [compressed file (bin)]
+```
+
+**Decoding**
+```
+ICIP_Compression.exe d [compressed file (bin)] [decoded file (ppm)]
+```
 
 #### Generate TFRecord dataset
 - Refer to [MainSR](https://www.github.com/JWSoh/MainSR) repo.
