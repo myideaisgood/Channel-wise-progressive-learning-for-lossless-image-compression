@@ -1,103 +1,158 @@
-import os
-import sys
-import cv2
+import tensorflow as tf
 import numpy as np
+import cv2
+import os
+import tqdm
 
-from config import *
+from config import parse_args
 
+def read_dir(data_dir):
 
-def make_buffer(path, filelist, ctx_up, ctx_left, ctx_total):
-    num_data = 0
+    dataset = []
 
-    for idx in range(len(filelist)):
-        filename = path + filelist[idx]
-        sys.stdout.flush()
+    for dirpath, _, filenames in os.walk(data_dir):
+        filenames = sorted(filenames)
 
-        img = cv2.imread(filename)
-        height, width, _ = np.shape(img)
+        for img_filename in filenames:
+            img_name = (data_dir + img_filename)
+            
+            dataset.append(img_name)
+        
+    return dataset
 
-        num_data += (height - ctx_up) * (width - ctx_left * 2)
+def _bytes_feature(value):
+    "string / byte 타입을 받아서 byte list를 리턴"
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
-    Xdata = np.arange(0, num_data * (3 * ctx_total -3)).reshape(num_data, (3 * ctx_total - 3))
-    Ydata = np.arange(0, 3 * num_data).reshape(num_data, 3)
+def _float_feature(value):
+    "float / double 타입을 받아서 float list를 리턴"
+    return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
 
-    return Xdata, Ydata
+def _int64_feature(value):
+    "bool / enum / int / uint 타입을 받아서 int64 list를 리턴"
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
-def rgb2yuv(img):
+def write_tfrecord(data_dir, image_list, tfrecords_name):
 
-    r, g, b = cv2.split(img)
+    print("Start converting image to tfrecords")
+    writer = tf.python_io.TFRecordWriter(path=data_dir + tfrecords_name)
 
-    r = np.asarray(r, float)
-    g = np.asarray(g, float)
-    b = np.asarray(b, float)
+    # Data -> Feature -> Example -> Serialized Example -> Write
 
-    u = b - np.round((87 * r + 169 * g) / 256.0)
-    v = r - g
-    y = g + np.round((86 * v + 29 * u) / 256.0)
+    for image_path in tqdm.tqdm(image_list):
+        
+        image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
+        image = np.array(image)
+        height, width, _ = image.shape
+        binary_image = image.tostring()
 
-    return y, u, v
+        feature_set = {
+            'image': _bytes_feature(binary_image),
+            'height': _int64_feature(height),
+            'width': _int64_feature(width)
+        }
 
-def create_dataset(args, data_type):
+        example = tf.train.Example(features=tf.train.Features(feature=feature_set))
 
-    path = args.data_dir + data_type + "/"
-    ctx_up = args.ctx_up
-    ctx_left = args.ctx_left
-    ctx_total = (ctx_left * 2 + 1) * ctx_up + ctx_left
+        serialized_example = example.SerializeToString()        
 
-    # Read in files
-    filelist = os.listdir(path)
-    filelist.sort()
+        writer.write(serialized_example)
 
-    # Make empty buffer for Xdata, Ydata
-    Xdata, Ydata = make_buffer(path, filelist, ctx_up, ctx_left, ctx_total)
+    writer.close()
 
-    print('num_file = ' + str(len(filelist)))
+    print("End converting image to tfrecords")
 
-    # Make dataset
-    n = 0
+def read_tfrecord(data_dir, tfrecords_name, num_epochs, batch_size, min_after_dequeue, crop_size=512):
 
-    for idx in range(len(filelist)):
-        filename = path + filelist[idx]
-        print("Reading " + filename)
-        sys.stdout.flush()
+    # Serialized Example -> Example -> Feature -> Data
 
-        img = cv2.cvtColor(cv2.imread(filename), cv2.COLOR_BGR2RGB)
+    # filename queue
+    filename_queue = tf.train.string_input_producer([data_dir + tfrecords_name], num_epochs=num_epochs)
 
-        img_y, img_u, img_v = rgb2yuv(img)
+    # read serialized examples
+    reader = tf.TFRecordReader()
+    _, serialized_example = reader.read(filename_queue)
 
-        height, width = np.shape(img_y)
+    # parse examples into features, each
+    feature_set = {'image': tf.FixedLenFeature([], tf.string),
+                      'height': tf.FixedLenFeature([], tf.int64),
+                      'width': tf.FixedLenFeature([], tf.int64)}
 
-        for y in range(height):
-            if y >= ctx_up:
-                for x in range(width):
-                    if ctx_left <= x < width - ctx_left:
-                        v_y = img_y[y - ctx_up:y + 1, x - ctx_left:x + ctx_left + 1].reshape(1, (ctx_left * 2 + 1) * (ctx_up + 1))
-                        v_u = img_u[y - ctx_up:y + 1, x - ctx_left:x + ctx_left + 1].reshape(1, (ctx_left * 2 + 1) * (ctx_up + 1))
-                        v_v = img_v[y - ctx_up:y + 1, x - ctx_left:x + ctx_left + 1].reshape(1, (ctx_left * 2 + 1) * (ctx_up + 1))
+    features = tf.parse_single_example(serialized_example, features=feature_set)
 
-                        ref_left_y = int(v_y[0, ctx_total - 1])
-                        ref_left_u = int(v_u[0, ctx_total - 1])
-                        ref_left_v = int(v_v[0, ctx_total - 1])
+    # decode data
+    img = tf.decode_raw(features['image'], tf.uint8)
 
-                        Ydata[n, 0] = int(v_y[0, ctx_total]) - ref_left_y
-                        Ydata[n, 1] = int(v_u[0, ctx_total]) - ref_left_u
-                        Ydata[n, 2] = int(v_v[0, ctx_total]) - ref_left_v
+    height = tf.cast(features['height'], tf.int64)
+    width = tf.cast(features['width'], tf.int64)
+    
+    img = tf.reshape(img, [height, width, 3])
+    img = tf.random_crop(img, [crop_size, crop_size, 3])
 
-                        for j in range(ctx_total - 1):
-                            Xdata[n, j] = int(v_y[0, j]) - ref_left_y
-                            Xdata[n, j + ctx_total - 1] = int(v_u[0, j]) - ref_left_u
-                            Xdata[n, j + 2 * ctx_total - 2] = int(v_v[0, j]) - ref_left_v
+    # mini-batch examples queue
+    img_input, height_input, width_input = tf.train.shuffle_batch([img, height, width], batch_size=batch_size, capacity=min_after_dequeue+3*batch_size, min_after_dequeue=min_after_dequeue)
 
-                        n = n + 1
+    return img_input, height_input, width_input
 
-    filename_x = args.data_dir + 'npy/Xdata_' + data_type + '.npy'
+def data_exist(data_dir, tfrecords_name):
 
-    filename_y = args.data_dir + 'npy/Ydata_' + data_type + '.npy'
+    if os.path.exists(data_dir + tfrecords_name):
+        return True
+    else:
+        return False
 
-    np.save(filename_x, Xdata)
-    np.save(filename_y, Ydata)
+def show_samples(data_dir, image_list, tfrecords_name, epochs, batch_size, min_after_dequeue):
+
+    if not data_exist(data_dir, tfrecords_name):
+        write_tfrecord(data_dir, image_list, tfrecords_name)
+    
+    image, width, height = read_tfrecord(data_dir, tfrecords_name, num_epochs=epochs, batch_size=batch_size, min_after_dequeue=min_after_dequeue)
+
+    with tf.Session() as sess:
+
+        sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
+
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord, start=True)
+
+        for i in range(epochs):
+            for step in range(int(len(image_list) / batch_size)):
+                img, w, h = sess.run([image, width, height])
+
+                for j in range(batch_size):
+
+                    img_each = img[j]
+                    img_each = cv2.cvtColor(img_each, cv2.COLOR_RGB2BGR)
+
+                    if j == 0:
+                        img_show = img_each
+                    else:
+                        img_show = np.concatenate([img_show, img_each], axis=1)
+
+                window_name = "Epoch_" + str(i) + "_Step_" + str(step)
+                cv2.imshow(window_name, img_show)
+                key = cv2.waitKey(0)
+
+                if key == ord('q'):
+                    coord.request_stop()
+                    coord.join(threads)
+                    return
+
+                cv2.destroyAllWindows()
+
+        coord.request_stop()
+        coord.join(threads)
 
 if __name__ == "__main__":
-
+    
     args = parse_args()
-    create_dataset(args, "test")
+    DATA_DIR = args.data_dir
+    img_list = read_dir(args.data_dir + 'train/')
+
+    tfrecords_name = 'train.tfrecord'
+
+    epochs = 2
+    batch_size = 4
+    min_after_dequeue = 10
+
+    show_samples(DATA_DIR, img_list, tfrecords_name, epochs, batch_size, min_after_dequeue)

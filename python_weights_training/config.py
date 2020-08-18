@@ -6,14 +6,15 @@ def parse_training_args(parser):
     Args:
         parser: An argparse object.
     """
-    parser.add_argument('--do_train', type=str2bool, default='no',
-                        help='Whether to train or not')
-
-    parser.add_argument('--load', type=str2bool, default='yes',
+    parser.add_argument('--load', type=str2bool, default='no',
                         help='Whether to load model or not')
 
     parser.add_argument('--gpu_num', type=int, default=0,
                         help='GPU number to use')
+
+    # Data parameters
+    parser.add_argument('--crop_size', type=int, default=512,
+                        help='Size to crop the data (Must be exponential of 2')
 
     # Directory parameters
     parser.add_argument('--ckpt_dir', type=str, default='ckpt/',
@@ -22,6 +23,9 @@ def parse_training_args(parser):
     parser.add_argument('--data_dir', type=str, default='data/',
                         help='The location of data directory')
 
+    parser.add_argument('--tensorboard_dir', type=str, default='board/',
+                        help='The location of tensorboard directory')
+
     # Model parameters
     parser.add_argument('--layer_num', type=int, default=4,
                         help='Layer of model')
@@ -29,28 +33,45 @@ def parse_training_args(parser):
     parser.add_argument('--hidden_unit', type=int, default=64,
                         help='Hidden units of model')
 
-    parser.add_argument('--ctx_up', type=int, default=2,
-                        help='Number of pixels up of reference pixel in context')
+    parser.add_argument('--sup_up', type=int, default=2,
+                        help='Number of pixels up of reference pixel in support')
 
-    parser.add_argument('--ctx_left', type=int, default=2,
-                        help='Number of pixels left of reference pixel in context')
+    parser.add_argument('--sup_left', type=int, default=2,
+                        help='Number of pixels left of reference pixel in support')
 
     # Session parameters
-    parser.add_argument('--lr', type=float, default=1e-3,
+    parser.add_argument('--lr', type=float, default=1e-4,
                         help='Learning rate')
 
-    parser.add_argument('--epoch', type=int, default=80,
-                        help='Epochs to train')
+    parser.add_argument('--channel_epoch', type=int, default=40000,
+                        help='Epochs to train individual channel')
 
-    parser.add_argument('--batch_size', type=int, default=256,
+    parser.add_argument('--joint_epoch', type=int, default=400000,
+                        help='Epochs to train yuv channel together')
+
+    parser.add_argument('--batch_size', type=int, default=1024,
                         help='Size of batch')
 
-    parser.add_argument('--lambda_ctx', type=float, default=1,
+    parser.add_argument('--texture_interval', type=int, default=5,
+                        help='# of times to train texture')
+
+    parser.add_argument('--lambda_ctx', type=float, default=1.0,
                         help='Balancing parameter between pred/context')
 
-    parser.add_argument('--save_interval', type=float, default=5,
+    parser.add_argument('--lambda_y', type=float, default=1.0,
+                        help='Balancing parameter between y/u/v')                        
+
+    parser.add_argument('--lambda_u', type=float, default=1.0,
+                        help='Balancing parameter between y/u/v')                        
+
+    parser.add_argument('--lambda_v', type=float, default=1.0,
+                        help='Balancing parameter between y/u/v')                                                
+
+    parser.add_argument('--save_every', type=float, default=100,
                         help='Interval of saving the model')
 
+    parser.add_argument('--print_every', type=float, default=100,
+                        help='Print every')
 
 
 def parse_args():
