@@ -55,8 +55,9 @@ Comparision of computation time (CPU time in seconds). We compared times for 512
 
 ```
 ├── python_weights_training : python code for training MLP weights
-    ├──> ckpt : trained models will be saved here
-    └──> data : train/valid/test data should be saved here
+    ├──> ckpt    : trained models will be saved here
+    ├──> board   : tensorboard logs will be saved here
+    └──> dataset : train/test data should be saved here
 └── c_compression : c++ code for compressing images with MLP weights obtained from python code
 
 ```
